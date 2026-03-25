@@ -23,10 +23,6 @@ export default function ScenariosPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
       setUser(session.user);
-      
-      if (session.user.user_metadata?.balance) {
-        setBalance(session.user.user_metadata.balance);
-      }
 
       const { data } = await supabase
         .from('obligations')
@@ -39,21 +35,8 @@ export default function ScenariosPage() {
     init();
   }, [router]);
 
-<<<<<<< HEAD
-  const handleBalanceChange = async (e) => {
-    const val = e.target.value;
-    setBalance(val);
-    await supabase.auth.updateUser({
-      data: { balance: val }
-    });
-  };
-
-  const runScenarios = async () => {
-    if (!balance || obligations.length === 0) return;
-=======
   useEffect(() => {
     if (obligations.length === 0) return;
->>>>>>> 0f677ddfb303a629d387e234e1a996ea6529fdc0
     setLoading(true);
     const floatBal = parseFloat(balance) || 0;
     try {
@@ -83,28 +66,7 @@ export default function ScenariosPage() {
         <h1 className={styles.pageTitle}>Strategy Engine</h1>
         <p className={styles.pageDesc}>Automated payment vector optimization based on current availability.</p>
 
-<<<<<<< HEAD
-        <div className={styles.inputRow}>
-          <div className={styles.formGroup}>
-            <label className="section-title" style={{ fontSize: '0.7rem', marginBottom: 8 }} htmlFor="scenario-balance">AVAILABLE BALANCE (₹)</label>
-            <input
-              id="scenario-balance"
-              type="number"
-              className="input-field"
-              placeholder="0.00"
-              value={balance}
-              onChange={handleBalanceChange}
-            />
-          </div>
-          <button onClick={runScenarios} className="btn-primary" disabled={loading || !balance || obligations.length === 0} id="run-scenarios-btn">
-            {loading ? 'CALCULATING...' : 'EXECUTE ANALYSIS'}
-          </button>
-        </div>
-
-        {obligations.length === 0 && (
-=======
         {obligations.length === 0 ? (
->>>>>>> 0f677ddfb303a629d387e234e1a996ea6529fdc0
           <div className={styles.emptyState}>
             NO UNPAID OBLIGATIONS IDENTIFIED
           </div>
