@@ -1,0 +1,874 @@
+--- START FORMAT PROMPT.pdf ---
+You  are  a  senior  full-stack  engineer  and  system  architect.  
+Your  task  is  to  design  and  guide  the  implementation  of  a  Progressive  Web  App  (PWA)  called  
+Full
+ 
+Stack
+ 
+CFO
+,
+ 
+an
+ 
+intelligent
+ 
+financial
+ 
+decision-support
+ 
+system
+ 
+for
+ 
+small
+ 
+businesses.
+ 
+You  must  strictly  follow  the  architecture,  constraints,  and  responsibilities  defined  below.  Do  
+NOT
+ 
+deviate
+ 
+from
+ 
+them.
+ 
+ 
+🧠  PROJECT  OVERVIEW  
+This  system  acts  as  a  virtual  CFO.  It:  
+●  Collects  financial  data  (bills,  invoices,  expenses)  ●  Converts  them  into  structured  obligations  ●  Runs  a  deterministic  Python-based  decision  engine  ●  Generates  payment  prioritization  strategies  ●  Uses  AI  ONLY  for  formatting,  explanation,  and  communication  (NOT  calculations)  
+ 
+⚙  CORE  ARCHITECTURE  
+1.  FRONTEND  (PWA)  
+●  Built  using  Stitch  UI  ●  Generated/structured  using  Antigravity  ●  Should  include:  ○  Login  page  ○  Dashboard  ○  Upload  bills  (image/PDF)  ○  Manual  entry  form  ○  Obligation  list  view  ○  Scenario  selection  cards  ○  Payment  plan  display  ○  AI  explanation  panel  ○  Email  preview  panel  ●  Must  be  responsive  and  installable  as  a  PWA  ●  No  offline  functionality  required  
+ 
+2.  AUTHENTICATION  &  DATABASE  
+●  Use  Supabase  ○  Auth:  Email  /  OAuth  login  ○  Database:  Store  user  +  obligations  
+Database  Table:  obligations  
+Each  record  must  contain:  
+{  
+id:
+ 
+uuid,
+ 
+user_id:
+ 
+uuid,
+ 
+vendor:
+ 
+string,
+ 
+amount:
+ 
+number,
+ 
+due_date:
+ 
+date,
+ 
+category:
+ 
+string,
+ 
+penalty:
+ 
+boolean
+ 
+(0
+ 
+or
+ 
+1),
+ 
+flexibility:
+ 
+boolean
+ 
+(0
+ 
+or
+ 
+1),
+ 
+is_paid:
+ 
+boolean,
+ 
+is_critical:
+ 
+boolean,
+ 
+created_at:
+ 
+timestamp
+ 
+}
+ 
+●  Each  user  has  isolated  data  ●  Multiple  bills  per  user  must  be  supported  
+ 
+3.  DATA  INGESTION  (OCR  +  MANUAL)  
+OCR  Pipeline:  
+●  Use  Tesseract  OCR  for  text  extraction  from:  ○  Images  ○  PDFs  (scanned)  ●  Use  Gemini  API  to:  ○  Clean  OCR  output  ○  Convert  into  structured  JSON  
+Extract  the  following  fields:  
+●  Vendor  name  ●  Bill  name  (if  available)  ●  Amount  ●  Due  date  
+Rules:  
+●  If  OCR  fails  →  allow  manual  input  ●  Always  show  user  a  review/edit  screen  before  saving  ●  Missing  fields:  ○  Vendor  →  must  prompt  user  ○  Due  date  →  prompt  user,  if  still  missing  assign  default  (today  +  30  days)  
+ 
+4.  DATA  STORAGE  FLOW  
+Upload  →  Tesseract  →  Gemini  (JSON  formatting)  →  User  review  →  Supabase  DB  
+ 
+5.  DECISION  ENGINE  (STRICTLY  PYTHON)  
+IMPORTANT:  
+●  This  is  the  core  intelligence  layer  ●  MUST  be  fully  deterministic  ●  NO  AI  involved  in  calculations  
+Input:  
+●  All  obligations  (JSON  from  DB)  ●  User  balance  (input  field,  editable)  
+ 
+Step  1:  Runway  Calculation  
+days_to_zero  =  balance  /  avg_daily_outflow  
+●  avg_daily_outflow  derived  from  historical  monthly  data  
+ 
+Step  2:  Conflict  Detection  
+If:  
+total_obligations
+ 
+>
+ 
+balance
+ 
+Then:  
+●  Trigger  warning  ●  Continue  processing  
+●  Generate  scenarios  
+ 
+Step  3:  Priority  Scoring  
+Each  obligation  gets  a  score:  
+score  =  (  
+penalty_weight
+ 
++
+ 
+urgency_weight
+ 
++
+ 
+flexibility_weight
+ 
++
+ 
+category_weight
+ 
++
+ 
+small_bill_bonus
+ 
+)
+ 
+Where:  
+●  urgency  =  1  /  days_left  ●  penalty  =  1  increases  priority  ●  flexibility  =  0  (not  flexible)  increases  priority  ●  category:  ○  salary/tax  =  highest  ○  vendor  =  medium  ●  small  bills  get  bonus  
+ 
+Step  4:  Special  Rule  
+If:  
+is_critical
+ 
+==
+ 
+true
+ 
+Then:  
+→
+ 
+ALWAYS
+ 
+highest
+ 
+priority
+ 
+ 
+Step  5:  Sorting  
+Sort  obligations  by  descending  score  →  payment  order  
+ 
+6.  SCENARIO  ENGINE  
+Generate  3  scenarios  by  adjusting  weights:  
+1.  Penalty  Minimization  
+2.  Relationship  Preservation  3.  Runway  Maximization  
+Each  scenario  must  output:  
+●  Payment  order  ●  Impact  summary  
+System  auto-selects  best
+...(TRUNCATED)
+--- END FORMAT PROMPT.pdf ---
+
+--- START FORMAT PPT.pdf ---
+SNUCHACKS‘26
+L o g i c a s h  
+( l o g i c  +  C a s h )
+Track : 3 (Fintech)
+T E A M  N A M E :  C l a u d e r s
+T E A M  L E A D E R :  A a t i s h  s
+P H O N E  N U M B E R :  7 3 3 8 8 7 8 3 1 9
+R O O M  N O :  1 2 7  ( 1  F l o o r )
+s t
+Problem Area Current Gap Impact on Businesses Our Resolution
+Financial Visibility Data scattered across
+receipts, invoices, banks
+No unified view of
+obligations vs cash
+Aggregates & structures all
+financial inputs into one
+model
+Payment Prioritization No system to decide what to
+pay first
+Random / suboptimal
+payment decisions
+Deterministic engine ranks
+obligations intelligently
+Trade-off Analysis Cannot evaluate penalties vs
+relationships vs survival
+Poor decision-making under
+pressure
+Multi-factor scoring (penalty,
+urgency, vendor trust,
+flexibility)
+Lack of Decision SupportTools only track data, don’t
+guide actions
+Reactive, intuition-based
+decisions
+Converts financial data →
+clear, actionable decisions
+Vendor CommunicationManual, delayed, poorly
+framed communication
+Relationship damage,
+negotiation failures
+Auto-generates context-
+aware negotiation emails
+Surplus Utilization No guidance when extra cash
+exists Missed growth opportunities
+Suggests business
+opportunities with ROI
+insights SNUCHACKS‘26
+PROBLEM STATEMENT
+A  s e m i - a u t o n o m o u s  s y s t e m  t h a t  c o n v e r t s  f i n a n c i a l  d a t a  i n t o
+d e c i s i o n s  +  a c t i o n s :
+U n i f i e d  F i n a n c i a l  M o d e l
+ A g g r e g a t e s  r e c e i p t s ,  i n v o i c e s ,  a n d  b a n k  d a t a  i n t o
+s t r u c t u r e d  o b l i g a t i o n s
+D e t e r m i n i s t i c  D e c i s i o n  E n g i n e
+ C o m p u t e s  r u n w a y  &  p r i o r i t i z e s  p a y m e n t s  u s i n g
+u r g e n c y ,  p e n a l t i e s ,  a n d  f l e x i b i l i t y
+S c e n a r i o  E n g i n e
+G i v e s  u s e r  c h o i c e s  o n  w h i c h  f a c t o r  t h e y  p r i o r i t i s e  
+             ( E g :  R e l a t i o n s h i p ,  P e n a l t y ,  e t c )
+U s e r  P r e f e r e n c e  b a s e d  S c o r i n g
+C a l c u l a t e  s c o r e s  b a s e d  o n  t h e  P r e f e r e n c e s  c h o s e n  b y
+t h e  u s e r
+A c t i o n  L a y e r
+ P r o d u c e s  p a y m e n t  p l a n s  +  A u t o m a t e d  V e n d o r
+n e g o t i a t i o n  e m a i l s
+S u r p l u s  I n t e l l i g e n c e
+S u g g e s t s  b u s i n e s s  o p p o r t u n i t i e s  w h e n  e x c e s s  c a s h
+e x i s t s
+SNUCHACKS‘26
+INNOVATION AND
+UNIQUENESS
+Google Oauth 2.0
+Photo Upload(Tesseract)
+Vendor Profile & History(Supabase)
+Runway Calculation(Days to Bankrupcy)
+PDF Invoice(PyMuPDF)
+ Bank Statement(CSV Parse)
+ Manual Upload(Salaries, etc)
+Conflict Detector(Unable to pay dues)
+Priority Scorer(Vendor reputation)
+Conflict Detector(Unable to pay dues)
+Email Drafter(Tone aware along with justifications)
+ Oppurtunity Finder(Incase of surplus funds)
+ Exportable Output(in PDF format)
+ SNUCHACKS‘26
+TECHNICAL
+ARCHITECTURE LAYER 1 : Authentication
+LAYER 2 : Input Layer
+LAYER 4 : Logical Reasoning (Purely using python)
+LAYER 5 : Output Layer
+LAYER 3 : Storage
+SNUCHACKS‘26
+FEASIBILITY AND
+VIABILITY
+F e a s i b i l i t y  &  V i a b i l i t y
+ T e c h n i c a l  F e a s i b i l i t y
+B u i l t  u s i n g  p r o v e n  t o o l s  ( P y t h o n ,  T e s s e r a c t ,
+R e a c t ,  G e m i n i  A P I )
+C o r e  d e c i s i o n  l o g i c  i s  d e t e r m i n i s t i c  a n d
+t e s t a b l e
+M o d u l a r  d e s i g n  e n a b l e s  p a r a l l e l  d e v e l o p m e n t
+a n d  q u i c k  i n t e g r a t i o n
+ I m p l e m e n t a t i o n  V i a b i l i t y
+C o r e  s y s t e m  ( i n p u t  +  p r i o r i t i z a t i o n )
+A d v a n c e d  f e a t u r e s  ( O C R ,  s c e n a r i o s ,  e m a i l s )
+a d d e d  i n c r e m e n t a l l y
+E a s y  d e p l o y m e n t  v i a  S t r e a m L i t
+ R o b u s t n e s s
+H y b r i d  a p p r o a c h  ( r u l e s  +  O C R  +  A I )  e n s u r e s :
+F l e x i b i l i t y  f o r  r e a l - w o r l d  m e s 
+...(TRUNCATED)
+--- END FORMAT PPT.pdf ---
+
+--- START FORMAT IDEA PPT.pdf ---
+ 
+🧾  Project  Documentation  
+ 
+1.  🚀  Project  Overview  
+Full  Stack  CFO  is  an  intelligent  financial  decision-support  system  designed  for  small  
+businesses.
+ 
+It
+ 
+goes
+ 
+beyond
+ 
+expense
+ 
+tracking
+ 
+by
+ 
+actively
+ 
+determining
+ 
+what
+ 
+to
+ 
+pay,
+ 
+when
+ 
+to
+ 
+pay,
+ 
+and
+ 
+why
+,
+ 
+while
+ 
+also
+ 
+assisting
+ 
+with
+ 
+communication
+ 
+and
+ 
+identifying
+ 
+growth
+ 
+opportunities.
+ 
+The  system  transforms  fragmented  financial  inputs  into  structured  decisions,  actionable  
+outputs,
+ 
+and
+ 
+strategic
+ 
+insights
+,
+ 
+effectively
+ 
+acting
+ 
+as
+ 
+a
+ 
+virtual
+ 
+Chief
+ 
+Financial
+ 
+Officer.
+ 
+ 
+2.  🎯  Problem  Statement  
+Small  businesses  struggle  with:  
+●  Managing  multiple  types  of  financial  obligations  (rent,  salaries,  vendors,  taxes,  etc.)  ●  Deciding  payment  priorities  under  limited  cash  flow  ●  Understanding  trade-offs  between  penalties,  relationships,  and  survival  ●  Communicating  with  vendors  during  delays  ●  Utilizing  surplus  capital  effectively  
+Existing  tools:  
+●  Track  finances  ❌  ●  Automate  bookkeeping  ❌  ●  But  do  not  make  decisions  ❌  
+ 
+3.  💡  Solution  
+Full  Stack  CFO  introduces  a  decision-first  financial  system  that:  
+●  Aggregates  all  financial  obligations  ●  Uses  deterministic  logic  to  prioritize  payments  ●  Generates  multiple  payment  strategies  ●  Explains  decisions  in  simple  language  ●  Automates  vendor  communication  
+ 
+●  Suggests  business  opportunities  when  surplus  exists  
+ 
+4.  🧠  Core  Principles  
+4.1  Deterministic  +  AI  Hybrid  Architecture  
+●  Python  Engine  →  All  financial  calculations  and  decisions  ●  LLM  (Gemini  API)  →  Language,  explanation,  and  reasoning  
+AI  never  performs  arithmetic  —  ensuring  reliability  and  trust.  
+ 
+4.2  Obligation-Centric  Model  
+Instead  of  “bills,”  the  system  models  all  business  obligations ,  including:  
+●  Fixed  costs  (salary,  rent,  tax,  EMI)  ●  Operational  costs  (utilities,  subscriptions)  ●  Vendor  payments  ●  Discretionary  spending  
+ 
+4.3  Explainability  First  
+Every  decision  is:  
+●  Transparent  ●  Justified  ●  Human-readable  
+ 
+5.  🏗  System  Architecture  
+ 
+5.1  Authentication  Layer  
+●  OAuth  (Google  /  GitHub)  ●  Stores:  ○  User  identity  
+ 
+○  Business  domain  (used  for  opportunity  suggestions)  
+ 
+5.2  Data  Ingestion  Layer  
+Input  Sources:  
+●  OCR  (receipts  via  Tesseract)  ●  PDF  invoices  (PyMuPDF)  ●  Bank  statements  (CSV  via  pandas)  ●  Manual  entry  (UI  forms)  
+Processing:  
+●  OCR  output  cleaned  using  Gemini  API  ●  Converted  into  structured  JSON  format  
+ 
+5.3  Data  Storage  Layer  
+Core  Table:  obligations  
+Field  Description  
+id  Unique  identifier  
+user_id  Owner  
+amount  Payment  value  
+due_date  Deadline  
+obligation_type  Category  
+flexibility_tier  Delay  flexibility  
+vendor_id  Linked  vendor  (optional)  
+penalty_pct  Late  penalty   
+Obligation  Types  
+●  salary  ●  rent  ●  tax  
+ 
+●  loan_emi  ●  utility  ●  subscription  ●  vendor  ●  other  
+ 
+Flexibility  Tiers  
+Tier  Meaning  Examples  
+0  Non-negotiable  salary,  tax,  rent,  EMI  
+1  Low  flexibility  utilities  
+2  Medium  vendors  
+3  High  flexibility  discretionary   
+5.4  Decision  Engine  (Python)  
+This  is  the  core  intelligence  layer .  
+ 
+Step  1:  Runway  Calculation  
+Determines  how  long  the  business  can  survive:  
+days_to_zero  =  balance  /  avg_daily_outflow    
+Step  2:  Priority  Scoring  
+Tier  0  Handling:  
+●  Always  paid  first  ●  Sorted  by  due  date  
+Tier  1–3  Scoring  Factors:  
+●  Penalty  severity  ●  Urgency  (due  date  proximity)  ●  Vendor  relationship  history  ●  Small  bill  bonus  (clears  multiple  small  dues  first)  
+ 
+ 
+Step  3:  Vendor  Intelligence  
+Tracks:  
+●  Payment  reliability  ●  Disputes  ●  Relationship  duration  
+Influences  prioritization  scores.  
+ 
+Step  4:  Conflict  Detection  
+If:  
+total_obligations  >  available_balan
+...(TRUNCATED)
+--- END FORMAT IDEA PPT.pdf ---
+
+--- START FORMAT SNUC Hacks 26' - Problem Statements (1).pdf ---
+ 
+ 
+ 
+ 
+   
+Problem  Statements  
+ 
+ 
+ 
+     
+
+ 
+Track  1:  Social  Tech  
+Context:
+ Most  habit  tracking  tools  today  are  private,  manual  and  easy  to  ignore.  Users  log  
+progress
+ 
+individually,
+ 
+receive
+ 
+little
+ 
+external
+ 
+accountability
+ 
+and
+ 
+face
+ 
+no
+ 
+real
+ 
+consequence
+ 
+when
+ 
+they
+ 
+drift
+ 
+away.
+  There  have  been  a  lot  of  apps  that  aimed  to  solve  this  problem,  but  none  have  been  
+successful.
+ 
+Potential
+ 
+areas
+ 
+of
+ 
+failure
+ 
+are
+ 
+with
+ 
+ease
+ 
+of
+ 
+use
+ 
+and
+ 
+engaging
+ 
+feedback
+ 
+systems.
+ 
+Challenge:
+ Design  and  build  a  group  ﬁrst  socially  aware  habit  system  that  transforms  habits  from  
+private
+ 
+tasks
+ 
+into
+ 
+a
+ 
+shared,
+ 
+social
+ 
+experience.
+ 
+The
+ 
+system
+ 
+should
+ 
+make
+ 
+habit
+ 
+tracking
+ 
+easy
+ 
+by
+ 
+methods
+ 
+such
+ 
+as
+ 
+automatic
+ 
+tracking,
+ 
+introducing
+ 
+gamiﬁcation
+ 
+elements
+ 
+and
+ 
+provide
+ 
+nudges
+ 
+to
+ 
+keep
+ 
+users
+ 
+consistent
+ 
+while
+ 
+dealing
+ 
+with
+ 
+failure
+ 
+conditions
+ 
+such
+ 
+as
+ 
+authenticity.
+  What  a  “habit”  is,  and  what  the  feedback  systems  associated  with  this  habit  are,  are  up  to  
+the
+ 
+team’s
+ 
+interpretation.
+ 
+Narrow
+ 
+down
+ 
+the
+ 
+problem
+ 
+slightly
+ 
+for
+ 
+more
+ 
+direction.
+ 
+A
+ 
+habit
+ 
+could
+ 
+be
+ 
+something
+ 
+as
+ 
+simple
+ 
+as
+ 
+having
+ 
+to
+ 
+solve
+ 
+a
+ 
+leetcode
+ 
+problem
+ 
+today.
+ 
+What  you  need  to  do:
+ ●  Take  a  deep  dive  into  the  psychology  of  humans  in  relation  to  their  habits  and  
+how
+ 
+it
+ 
+affects
+ 
+the
+ 
+solution
+ 
+they
+ 
+build.
+ ●  Analyze  existing  solutions,  and  pinpoint  reasons  as  to  why  none  of  them  have  
+become
+ 
+mainstream;
+ 
+Attempt
+ 
+to
+ 
+solve
+ 
+those
+ 
+problems
+ 
+in
+ 
+a
+ 
+socially
+ 
+aware
+ 
+manner.
+  Feature  Ideas:  These  ideas  have  not  been  elaborated  upon,  because  we  suggest  that  teams  form  their  
+own
+ 
+interpretations.
+ 
+These
+ 
+are
+ 
+meant
+ 
+to
+ 
+only
+ 
+guide
+ 
+your
+ 
+thinking.
+  ●  Habit  Tracking  ●  Social  Experiences  ●  Gamiﬁed  Rewards  ●  Failure  Analysis       
+ 
+Evaluation  Criteria:   Criterion  What  We  Look  For  
+Behavioral  Grounding  
+Does  the  solution  apply  psychological  principles  based  upon  real  world  scenarios?  
+Problem  Analysis  and  Differentiation  
+Does  the  solution  address  those  with  concrete  design  choices  rather  than  vague  improvements?  
+Social  System  Design  
+Are  group  mechanics  creating  genuine  shared  stakes  with  thoughtful  failure  recovery?  
+Technical  Execution  Is  the  system  functional  and  demonstrable?  Is  tracking  low-friction  or  automatic  in  a  meaningful  way?  
+User  Experience  Is  the  UI/UX  appropriate  for  the  target  demographic?  Would  someone  your  age  use  this  without  hesitation?   Push  beyond  the  ideas  above.  These  are  meant  to  be  starting  points  for  a  system  that  redeﬁnes  
+how
+ 
+habits
+ 
+are
+ 
+formed,
+ 
+sustained
+ 
+and
+ 
+experienced.
+  
+ 
+Track  2:  Market  Intelligence  
+Context:
+ Companies  across  industries  constantly  ask:    ●  What  are  competitors  launching?  ●  Which  messaging  angles  are  they  testing?  ●  How  are  they  positioning  themselves  for  different  customer  segments?  ●  Which  offers,  product  claims,  landing  page  formats,  and  calls  to  action  are  
+becoming
+ 
+common?
+ ●  What  objections  are  customers  repeatedly  raising  in  reviews,  comments,  forums,  
+or
+ 
+sales
+ 
+conversations?
+ 
+  Today,  this  intelligence  is  scattered  across  websites,  landing  pages,  ad  libraries,  review  
+platforms,
+ 
+social
+ 
+media,
+ 
+product
+ 
+listings,
+ 
+and
+ 
+internal
+ 
+notes.
+ 
+This
+ 
+makes
+ 
+market
+ 
+understanding
+ 
+slow,
+ 
+manual,
+ 
+and
+ 
+highly
+ 
+dependent
+ 
+on
+ 
+individual
+ 
+effort.
+ 
+Challenge:
+ Build  an  intelligence  engine  that  continuously  tracks  competitor  websites,  such  as  
+landing
+ 
+pages,
+ 
+product
+ 
+or
+ 
+service
+ 
+pages,
+ 
+etc.
+ 
+for
+ 
+pricing
+ 
+changes,
+ 
+ads,
+ 
+reviews,
+ 
+inﬂuencer
+ 
+or
+ 
+community
+ 
+mentions
+ 
+and
+ 
+category
+ 
+trends,
+ 
+to
+ 
+infer
+ 
+actionable
+...(TRUNCATED)
+--- END FORMAT SNUC Hacks 26' - Problem Statements (1).pdf ---
+

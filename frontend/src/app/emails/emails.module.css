@@ -1,0 +1,57 @@
+.layout { display: flex; min-height: 100vh; }
+.main { flex: 1; margin-left: 260px; padding: 32px 40px; position: relative; z-index: 1; }
+
+.pageTitle { font-size: 1.75rem; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
+.pageDesc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 32px; }
+
+.twoCol { display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; }
+
+.panel {
+  background: var(--bg-glass); border: 1px solid var(--border-subtle);
+  border-radius: 16px; padding: 24px;
+}
+.panelHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.panelTitle { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; }
+.muted { color: var(--text-muted); font-size: 0.9rem; }
+
+.oblList { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; margin-bottom: 20px; }
+.oblItem {
+  padding: 12px 16px; border: 1px solid rgba(255,255,255,0.04); border-radius: 10px;
+  background: rgba(255,255,255,0.02); cursor: pointer; transition: all 0.15s ease;
+  text-align: left; font-family: var(--font-primary);
+}
+.oblItem:hover { background: rgba(255,255,255,0.05); border-color: var(--border-accent); }
+.oblItemActive { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); }
+.oblVendor { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
+.oblMeta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+.toneSection { border-top: 1px solid var(--border-subtle); padding-top: 16px; }
+.toneRow { display: flex; gap: 8px; flex-wrap: wrap; }
+.toneBtn {
+  padding: 8px 14px; border-radius: 9999px; border: 1px solid var(--border-subtle);
+  background: transparent; color: var(--text-secondary); font-family: var(--font-primary);
+  font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease;
+}
+.toneBtn:hover { background: var(--bg-glass-hover); }
+.toneBtnActive { background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.3); color: #60a5fa; font-weight: 600; }
+
+.emailPreview {
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 12px; padding: 24px; max-height: 500px; overflow-y: auto;
+}
+.emailText {
+  font-family: var(--font-primary); font-size: 0.88rem; color: var(--text-secondary);
+  line-height: 1.7; white-space: pre-wrap; word-wrap: break-word;
+}
+
+.emptyEmail {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 300px; color: var(--text-muted); text-align: center; gap: 12px;
+}
+.emptyEmail span { font-size: 2.5rem; opacity: 0.3; }
+.emptyEmail p { font-size: 0.9rem; }
+
+@media (max-width: 768px) {
+  .main { margin-left: 70px; padding: 20px; }
+  .twoCol { grid-template-columns: 1fr; }
+}
