@@ -57,10 +57,6 @@ export default function DashboardPage() {
 
   const totalUnpaid = obligations.reduce((sum, o) => sum + (o.amount || 0), 0);
   const criticalCount = obligations.filter(o => o.is_critical).length;
-  const dueSoon = obligations.filter(o => {
-    const diff = (new Date(o.due_date) - new Date()) / 86400000;
-    return diff <= 7 && diff >= 0;
-  }).length;
 
   if (loading) {
     return (
@@ -69,7 +65,7 @@ export default function DashboardPage() {
         <main className={styles.main}>
           <div className={styles.loadingContainer}>
             <div className={styles.spinner}></div>
-            <p>Loading your financial data...</p>
+            <p>ACCESSING DATA...</p>
           </div>
         </main>
       </div>
@@ -80,103 +76,79 @@ export default function DashboardPage() {
     <div className={styles.layout}>
       <Sidebar user={user} />
       <main className={styles.main}>
-        <div className={styles.header}>
+        <header className={styles.header}>
           <div>
-            <h1 className={styles.greeting}>Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {user?.email?.split('@')[0]}</h1>
-            <p className={styles.subtitle}>Here&apos;s your financial overview</p>
+            <h1 className={styles.greeting}>{user?.email?.split('@')[0]}</h1>
+            <p className={styles.subtitle}>Financial Overview</p>
           </div>
           <div className={styles.balanceInput}>
-            <label className="form-label" htmlFor="balance-input">Current Balance (₹)</label>
+            <p className={styles.subtitle}>Current Balance (₹)</p>
             <input
-              id="balance-input"
               type="number"
               className="input-field"
-              placeholder="Enter balance..."
+              placeholder="0.00"
               value={balance}
               onChange={(e) => setBalance(e.target.value)}
-              style={{ width: '200px' }}
+              style={{ width: '200px', fontSize: '1.2rem', fontWeight: '900', border: 'none', borderBottom: '2px solid #222', textAlign: 'right', padding: '8px 0' }}
             />
           </div>
-        </div>
+        </header>
 
         {/* Warning Banner */}
         {conflict && (
           <div className={styles.warningBanner}>
-            <span className={styles.warningIcon}>⚠️</span>
             <div>
-              <strong>Cash Flow Conflict Detected!</strong>
-              <p>Your total obligations (₹{totalUnpaid.toLocaleString()}) exceed your current balance. Consider reviewing payment scenarios.</p>
+              <strong>CASH FLOW CONFLICT</strong>
+              <p>Obligations (₹{totalUnpaid.toLocaleString()}) exceed balance.</p>
             </div>
-            <button onClick={() => router.push('/scenarios')} className="btn-primary" style={{ flexShrink: 0 }}>
-              View Scenarios
+            <button onClick={() => router.push('/scenarios')} className="btn-primary">
+              STRATEGIZE
             </button>
           </div>
         )}
 
         {/* Stats Grid */}
         <div className={styles.statsGrid}>
-          <div className={`${styles.statCard} ${styles.statBlue}`}>
-            <div className={styles.statIcon}>💰</div>
-            <div className={styles.statContent}>
-              <div className={styles.statValue}>₹{balance ? parseFloat(balance).toLocaleString() : '—'}</div>
-              <div className={styles.statLabel}>Current Balance</div>
-            </div>
+          <div className={styles.statCard}>
+            <div className={styles.statValue}>₹{balance ? parseFloat(balance).toLocaleString() : '0'}</div>
+            <div className={styles.statLabel}>BALANCE</div>
           </div>
-          <div className={`${styles.statCard} ${styles.statAmber}`}>
-            <div className={styles.statIcon}>📋</div>
-            <div className={styles.statContent}>
-              <div className={styles.statValue}>₹{totalUnpaid.toLocaleString()}</div>
-              <div className={styles.statLabel}>Total Unpaid</div>
-            </div>
+          <div className={styles.statCard}>
+            <div className={styles.statValue}>₹{totalUnpaid.toLocaleString()}</div>
+            <div className={styles.statLabel}>UNPAID</div>
           </div>
-          <div className={`${styles.statCard} ${runway !== null && runway < 30 ? styles.statRose : styles.statEmerald}`}>
-            <div className={styles.statIcon}>⏱️</div>
-            <div className={styles.statContent}>
-              <div className={styles.statValue}>{runway !== null ? (runway === Infinity ? '∞' : `${runway} days`) : '—'}</div>
-              <div className={styles.statLabel}>Days to Zero</div>
-            </div>
+          <div className={styles.statCard}>
+            <div className={styles.statValue}>{runway !== null ? (runway === Infinity ? '∞' : runway) : '—'}</div>
+            <div className={styles.statLabel}>RUNWAY (DAYS)</div>
           </div>
-          <div className={`${styles.statCard} ${styles.statViolet}`}>
-            <div className={styles.statIcon}>🔥</div>
-            <div className={styles.statContent}>
-              <div className={styles.statValue}>{criticalCount}</div>
-              <div className={styles.statLabel}>Critical Bills</div>
-            </div>
+          <div className={styles.statCard}>
+            <div className={styles.statValue}>{criticalCount}</div>
+            <div className={styles.statLabel}>CRITICAL</div>
           </div>
         </div>
 
         {/* Two Column Layout */}
         <div className={styles.twoCol}>
-          {/* Upcoming Obligations */}
-          <div className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <h2 className={styles.panelTitle}>Upcoming Obligations</h2>
-              <span className="badge badge-amber">{dueSoon} due this week</span>
-            </div>
+          <div>
+            <h2 className={styles.panelTitle}>Pending Obligations</h2>
             {obligations.length === 0 ? (
-              <div className={styles.emptyState}>
-                <p>No obligations yet. Upload your bills to get started.</p>
-                <button onClick={() => router.push('/upload')} className="btn-primary" id="upload-cta">
-                  Upload Bills
-                </button>
-              </div>
+              <p className={styles.subtitle}>No pending obligations found.</p>
             ) : (
               <div className={styles.obligationList}>
-                {obligations.slice(0, 8).map((obl, i) => {
+                {obligations.slice(0, 10).map((obl, i) => {
                   const daysLeft = Math.ceil((new Date(obl.due_date) - new Date()) / 86400000);
                   return (
-                    <div key={obl.id || i} className={styles.oblRow} style={{ animationDelay: `${i * 0.05}s` }}>
-                      <div className={styles.oblInfo}>
+                    <div key={obl.id || i} className={styles.oblRow}>
+                      <div>
                         <div className={styles.oblVendor}>
-                          {obl.vendor || 'Unknown'}
-                          {obl.is_critical && <span className="badge badge-rose" style={{ marginLeft: 8 }}>CRITICAL</span>}
+                          {obl.vendor?.toUpperCase() || 'UNKNOWN'}
                         </div>
-                        <div className={styles.oblCategory}>{obl.category || 'general'}</div>
+                        <div className={styles.oblCategory}>{obl.category?.toUpperCase() || 'GENERAL'}</div>
                       </div>
                       <div className={styles.oblRight}>
                         <div className={styles.oblAmount}>₹{(obl.amount || 0).toLocaleString()}</div>
-                        <div className={`${styles.oblDue} ${daysLeft <= 3 ? styles.dueDanger : daysLeft <= 7 ? styles.dueWarn : ''}`}>
-                          {daysLeft < 0 ? 'Overdue' : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
+                        <div className={`${styles.oblDue} ${daysLeft <= 3 ? styles.dueDanger : ''}`}>
+                          {daysLeft < 0 ? 'OVERDUE' : daysLeft === 0 ? 'TODAY' : `${daysLeft}D`}
                         </div>
                       </div>
                     </div>
@@ -186,28 +158,23 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Quick Actions */}
-          <div className={styles.panel}>
-            <h2 className={styles.panelTitle}>Quick Actions</h2>
+          <div>
+            <h2 className={styles.panelTitle}>Operations</h2>
             <div className={styles.actionGrid}>
-              <button onClick={() => router.push('/upload')} className={styles.actionCard} id="action-upload">
-                <span className={styles.actionIcon}>📄</span>
-                <span className={styles.actionLabel}>Upload Bills</span>
-                <span className={styles.actionDesc}>Scan or manually add</span>
+              <button onClick={() => router.push('/upload')} className={styles.actionCard}>
+                <span className={styles.actionLabel}>Upload</span>
+                <span className={styles.actionDesc}>Scan or add bills</span>
               </button>
-              <button onClick={() => router.push('/obligations')} className={styles.actionCard} id="action-obligations">
-                <span className={styles.actionIcon}>📋</span>
-                <span className={styles.actionLabel}>View All</span>
-                <span className={styles.actionDesc}>Manage obligations</span>
+              <button onClick={() => router.push('/obligations')} className={styles.actionCard}>
+                <span className={styles.actionLabel}>Manage</span>
+                <span className={styles.actionDesc}>View all entries</span>
               </button>
-              <button onClick={() => router.push('/scenarios')} className={styles.actionCard} id="action-scenarios">
-                <span className={styles.actionIcon}>🎯</span>
-                <span className={styles.actionLabel}>Scenarios</span>
+              <button onClick={() => router.push('/scenarios')} className={styles.actionCard}>
+                <span className={styles.actionLabel}>Simulate</span>
                 <span className={styles.actionDesc}>Payment strategies</span>
               </button>
-              <button onClick={() => router.push('/emails')} className={styles.actionCard} id="action-emails">
-                <span className={styles.actionIcon}>✉️</span>
-                <span className={styles.actionLabel}>Email Drafter</span>
+              <button onClick={() => router.push('/emails')} className={styles.actionCard}>
+                <span className={styles.actionLabel}>Communicate</span>
                 <span className={styles.actionDesc}>Vendor negotiation</span>
               </button>
             </div>

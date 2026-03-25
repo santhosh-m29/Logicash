@@ -47,7 +47,6 @@ export default function ScenariosPage() {
       setSelectedScenario(data.recommended);
       setExplanation(data.explanation || '');
     } catch {
-      // Fallback: Run local calculation
       const localScenarios = generateLocalScenarios(obligations, parseFloat(balance));
       setScenarios(localScenarios);
       setSelectedScenario('penalty_minimization');
@@ -56,10 +55,8 @@ export default function ScenariosPage() {
     }
   };
 
-  // Local fallback decision engine
   const generateLocalScenarios = (obls, bal) => {
     const today = new Date();
-
     const scored = (weightConfig) => {
       return obls.map(o => {
         const daysLeft = Math.max(1, Math.ceil((new Date(o.due_date) - today) / 86400000));
@@ -90,33 +87,27 @@ export default function ScenariosPage() {
 
     return {
       penalty_minimization: {
-        name: 'Penalty Minimization',
-        description: 'Prioritizes bills with late penalties to avoid extra costs',
-        icon: '🛡️',
-        color: '#f43f5e',
+        name: 'PENALTY MINIMIZATION',
+        description: 'PRIORITIZES OBLIGATIONS WITH LATE PENALTIES TO MINIMIZE UNNECESSARY EXPENDITURE.',
         plan: buildPlan(penaltyMin),
       },
       relationship_preservation: {
-        name: 'Relationship Preservation',
-        description: 'Keeps vendor relationships strong by paying key partners first',
-        icon: '🤝',
-        color: '#8b5cf6',
+        name: 'RELATIONSHIP PRESERVATION',
+        description: 'PROTECTS STRATEGIC VENDOR RELATIONSHIPS BY PRIORITIZING KEY PARTNER PAYMENTS.',
         plan: buildPlan(relationship),
       },
       runway_maximization: {
-        name: 'Runway Maximization',
-        description: 'Extends your cash runway by paying only critical obligations',
-        icon: '🛫',
-        color: '#10b981',
+        name: 'RUNWAY MAXIMIZATION',
+        description: 'EXTENDS OPERATIONAL RUNWAY BY DEFERRING NON-CRITICAL CASH OUTFLOWS.',
         plan: buildPlan(runway),
       },
     };
   };
 
   const scenarioMeta = [
-    { key: 'penalty_minimization', name: 'Penalty Minimization', icon: '🛡️', color: '#f43f5e' },
-    { key: 'relationship_preservation', name: 'Relationship Preservation', icon: '🤝', color: '#8b5cf6' },
-    { key: 'runway_maximization', name: 'Runway Maximization', icon: '🛫', color: '#10b981' },
+    { key: 'penalty_minimization', name: 'PENALTY MINIMIZATION' },
+    { key: 'relationship_preservation', name: 'RELATIONSHIP PRESERVATION' },
+    { key: 'runway_maximization', name: 'RUNWAY MAXIMIZATION' },
   ];
 
   const selected = scenarios && selectedScenario ? scenarios[selectedScenario] : null;
@@ -125,30 +116,29 @@ export default function ScenariosPage() {
     <div className={styles.layout}>
       <Sidebar user={user} />
       <main className={styles.main}>
-        <h1 className={styles.pageTitle}>Scenario Engine</h1>
-        <p className={styles.pageDesc}>Run payment strategies and choose the best plan for your business</p>
+        <h1 className={styles.pageTitle}>Strategy Engine</h1>
+        <p className={styles.pageDesc}>Model payment vectors and optimize capital allocation</p>
 
         <div className={styles.inputRow}>
           <div className={styles.formGroup}>
-            <label className="form-label" htmlFor="scenario-balance">Your Current Balance (₹)</label>
+            <label className="section-title" style={{ fontSize: '0.7rem', marginBottom: 8 }} htmlFor="scenario-balance">AVAILABLE BALANCE (₹)</label>
             <input
               id="scenario-balance"
               type="number"
               className="input-field"
-              placeholder="Enter your bank balance..."
+              placeholder="0.00"
               value={balance}
               onChange={(e) => setBalance(e.target.value)}
             />
           </div>
           <button onClick={runScenarios} className="btn-primary" disabled={loading || !balance || obligations.length === 0} id="run-scenarios-btn">
-            {loading ? 'Analyzing...' : '🧠 Run Scenarios'}
+            {loading ? 'CALCULATING...' : 'EXECUTE ANALYSIS'}
           </button>
         </div>
 
         {obligations.length === 0 && (
           <div className={styles.emptyState}>
-            <p>No unpaid obligations found. Upload bills first to run scenarios.</p>
-            <button onClick={() => router.push('/upload')} className="btn-primary">Upload Bills</button>
+            NO UNPAID OBLIGATIONS IDENTIFIED
           </div>
         )}
 
@@ -166,15 +156,13 @@ export default function ScenariosPage() {
                     key={sm.key}
                     className={`${styles.scenarioCard} ${selectedScenario === sm.key ? styles.scenarioCardActive : ''}`}
                     onClick={() => setSelectedScenario(sm.key)}
-                    style={{ '--card-accent': sm.color }}
                     id={`scenario-${sm.key}`}
                   >
-                    <span className={styles.scenarioIcon}>{sm.icon}</span>
                     <h3>{sm.name}</h3>
                     <p className={styles.scenarioDesc}>{s.description}</p>
                     <div className={styles.scenarioStats}>
-                      <div><strong>{payCount}</strong> payments</div>
-                      <div><strong>₹{payTotal.toLocaleString()}</strong> total</div>
+                      <div><strong>{payCount}</strong> SETTLEMENTS</div>
+                      <div><strong>₹{payTotal.toLocaleString()}</strong> OUTFLOW</div>
                     </div>
                   </button>
                 );
@@ -185,18 +173,18 @@ export default function ScenariosPage() {
             {selected && (
               <div className={styles.planPanel}>
                 <h2 className={styles.planTitle}>
-                  {selected.icon} {selected.name} — Payment Plan
+                  {selected.name} — ALLOCATION PLAN
                 </h2>
                 <div className={styles.planList}>
                   {selected.plan.map((item, i) => (
                     <div key={item.id || i} className={`${styles.planItem} ${item.action === 'DEFER' ? styles.planDeferred : ''}`}>
-                      <div className={styles.planOrder}>{i + 1}</div>
+                      <div className={styles.planOrder}>{String(i + 1).padStart(2, '0')}</div>
                       <div className={styles.planInfo}>
                         <div className={styles.planVendor}>
-                          {item.vendor}
-                          {item.is_critical && <span className="badge badge-rose" style={{ marginLeft: 8 }}>CRITICAL</span>}
+                          {item.vendor?.toUpperCase()}
+                          {item.is_critical && <span className="badge" style={{ marginLeft: 12, borderColor: '#f43f5e', color: '#f43f5e' }}>PRIORITY</span>}
                         </div>
-                        <div className={styles.planCategory}>{item.category} · Due in {item.daysLeft}d</div>
+                        <div className={styles.planCategory}>{item.category?.toUpperCase()} · T-{item.daysLeft}D</div>
                       </div>
                       <div className={styles.planAmount}>₹{item.amount.toLocaleString()}</div>
                       <div className={`${styles.planAction} ${item.action === 'PAY' ? styles.planPay : styles.planDefer}`}>
@@ -208,11 +196,11 @@ export default function ScenariosPage() {
               </div>
             )}
 
-            {/* AI Explanation */}
+            {/* Explanation */}
             {explanation && (
               <div className={styles.explanationPanel}>
-                <h3>🤖 AI Explanation</h3>
-                <p>{explanation}</p>
+                <h3>ENGINE LOGIC</h3>
+                <p>{explanation.toUpperCase()}</p>
               </div>
             )}
           </>

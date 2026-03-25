@@ -5,6 +5,11 @@ from typing import List, Optional
 import json
 import math
 from datetime import datetime, timedelta
+import re
+import cv2
+import numpy as np
+import pytesseract
+
 
 app = FastAPI(title="Logicash Engine", version="1.0.0")
 
@@ -169,7 +174,7 @@ SCENARIO_META = {
 
 @app.get("/")
 def root():
-    return {"status": "ok", "engine": "Logicash Decision Engine v1.0"}
+    return {"status": "ok", "engine": "Logicash Decision Engine v2.0 (Tesseract-First)"}
 
 
 @app.post("/api/scenarios")
@@ -289,79 +294,253 @@ Regards,
     
     return {"email": templates.get(req.tone, templates["professional"])}
 
+def is_low_quality(text: str) -> bool:
+    """Check if text is empty or lacks critical invoice markers."""
+    if not text:
+        return True
+    if len(text.strip()) < 30:
+        return True
+    # Check for "Total" or currency symbols
+    if "total" not in text.lower() and "$" not in text and "₹" not in text:
+        return True
+    return False
+
+
+def pdf_to_image(content: bytes):
+    """Convert first page of PDF to a high-DPI image for OCR."""
+    import fitz
+    import numpy as np
+    import cv2
+    
+    doc = fitz.open(stream=content, filetype="pdf")
+    page = doc.load_page(0)
+    
+    pix = page.get_pixmap(dpi=300)
+    img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
+    
+    if pix.n == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+    
+    return img
+
+
+def preprocess_image(img: np.ndarray) -> np.ndarray:
+    """Standardize image for better OCR accuracy."""
+    import cv2
+    # Convert to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Increase contrast
+    gray = cv2.convertScaleAbs(gray, alpha=1.5, beta=0)
+    # Fixed thresholding
+    thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
+    
+    return thresh
+
+
+def run_tesseract_pipeline(content: bytes, is_pdf: bool = True):
+    """Orchestrate conversion, preprocessing, and OCR."""
+    import pytesseract
+    import io
+    from PIL import Image
+    import numpy as np
+    
+    if is_pdf:
+        img = pdf_to_image(content)
+    else:
+        # Load image from bytes
+        pil_img = Image.open(io.BytesIO(content))
+        img = np.array(pil_img.convert('RGB'))[:, :, ::-1].copy() # RGB to BGR for CV2
+        
+    processed = preprocess_image(img)
+    config = r'--oem 3 --psm 6'
+    text = pytesseract.image_to_string(processed, config=config)
+    
+    return text
+
+
+def extract_structured_fields(text):
+    import re
+    
+    # --- VENDOR EXTRACTION (FINAL FIX) ---
+    vendor_match = re.search(r'VENDOR\s*NAME\s*:\s*(.+)', text, re.IGNORECASE)
+    vendor = vendor_match.group(1).strip() if vendor_match else ""
+    vendor = re.sub(r'\b(?:BILL|AMOUNT|TOTAL|DATE|:).*', '', vendor, flags=re.IGNORECASE)
+    vendor = re.sub(r'\d+', '', vendor).strip()
+
+    # --- AMOUNT EXTRACTION (HARDENED) ---
+    amount = ""
+    # Look for labels like BILL AMOUNT, TOTAL, etc.
+    amount_match = re.search(r'(?:BILL|TOTAL|AMOUNT)\s*(?:AMOUNT)?\s*[:=-]?\s*([0-9]+(?:\.[0-9]{2})?)', text, re.IGNORECASE)
+    if amount_match:
+        amount = amount_match.group(1)
+    else:
+        # Avoid taking '2024' or dates as amounts. Look for numbers that look like prices.
+        prices = re.findall(r'\b[0-9]{1,5}(?:\.[0-9]{2})?\b', text)
+        # Filter out common year strings
+        prices = [p for p in prices if p not in ["2024", "2025", "2023"]]
+        if prices:
+            amount = max(prices, key=lambda x: float(x))
+
+    # --- DUE DATE EXTRACTION (HIGH PERMISSIVENESS) ---
+    due_date = ""
+    # Enhanced regex for varied delimiters and spacing: DD-MM-YYYY, DD/MM/YYYY, etc.
+    date_label_match = re.search(r'(?:DUE|BILL|INVOICE|PAYMENT)\s*DATE\s*[:=-]?\s*(\d{1,4})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{2,4})', text, re.IGNORECASE)
+    
+    if not date_label_match:
+        # Last resort: find any date match in the whole text if label-based fails
+        date_label_match = re.search(r'(\d{1,4})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{2,4})', text)
+
+    if date_label_match:
+        g1, g2, g3 = date_label_match.groups()
+        # Handle DD-MM-YYYY
+        if len(g1) <= 2 and len(g3) == 4: # Standard DD-MM-YYYY
+            due_date = f"{g3}-{g2.zfill(2)}-{g1.zfill(2)}"
+        elif len(g1) == 4: # YYYY-MM-DD
+            due_date = f"{g1}-{g2.zfill(2)}-{g3.zfill(2)}"
+        elif len(g1) <= 2 and len(g3) == 2: # DD-MM-YY -> 20YY
+            due_date = f"20{g3}-{g2.zfill(2)}-{g1.zfill(2)}"
+
+    return vendor, amount, due_date
+
+
+def extract_with_pymupdf(content: bytes) -> str:
+    """Attempt direct text extraction from PDF."""
+    import fitz
+    try:
+        doc = fitz.open(stream=content, filetype="pdf")
+        text = ""
+        for page in doc:
+            text += page.get_text() + "\n"
+        return text
+    except:
+        return ""
+
 
 @app.post("/api/ocr")
 async def process_ocr(file: UploadFile = File(...)):
-    """Process an uploaded bill via OCR. Returns structured JSON."""
-    # Read file content
+    """Hybrid OCR pipeline (PyMuPDF -> Tesseract fallback -> Gemini)."""
+    import os
+    import json
+    import re
+    import google.generativeai as genai
+    
     content = await file.read()
     filename = file.filename or ""
+    is_pdf = filename.lower().endswith(".pdf")
     
-    extracted = {
-        "vendor": "",
-        "amount": None,
-        "due_date": "",
-        "category": "other",
-        "raw_text": "",
-    }
+    # Fix Tesseract path for Windows
+    import pytesseract
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     
-    try:
-        if filename.lower().endswith(".pdf"):
-            # Try PyMuPDF
-            try:
-                import fitz
-                doc = fitz.open(stream=content, filetype="pdf")
-                text = ""
-                for page in doc:
-                    text += page.get_text()
-                extracted["raw_text"] = text
-            except ImportError:
-                extracted["raw_text"] = "[PyMuPDF not installed]"
-        else:
-            # Try Tesseract OCR for images
-            try:
-                from PIL import Image
-                import pytesseract
-                import io
-                img = Image.open(io.BytesIO(content))
-                text = pytesseract.image_to_string(img)
-                extracted["raw_text"] = text
-            except ImportError:
-                extracted["raw_text"] = "[Tesseract/PIL not installed]"
+    # ─── PHASE 1: TEXT EXTRACTION ───────────────
+    text = ""
+    if is_pdf:
+        text = extract_with_pymupdf(content)
+        if is_low_quality(text):
+            text = run_tesseract_pipeline(content, is_pdf=True)
+    else:
+        # Direct OCR for images
+        text = run_tesseract_pipeline(content, is_pdf=False)
         
-        # Try Gemini API for structured extraction
+    extracted_text = text
+
+
+    # --- RULE BASED EXTRACTION ---
+    # Moved text cleaning here since extract_structured_fields no longer does it
+    text = text.replace("%", " ")
+    text = re.sub(r'\s+', ' ', text)
+    vendor, amount, due_date = extract_structured_fields(text)
+
+    if vendor and amount:
+        return {
+            "vendor": vendor,
+            "amount": float(amount),
+            "due_date": due_date,
+            "category": "vendor",
+            "raw_text": text
+        }
+
+    print("==== RAW OCR TEXT ====")
+    print(text[:1000] + ("..." if len(text) > 1000 else ""))
+    print("======================")
+
+    # ─── PHASE 2: AI STRUCTURED DATA (Fallback) ─────
+    extracted = {"vendor": "", "amount": "", "due_date": "", "category": "other"}
+    
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if api_key and text:
         try:
-            import google.generativeai as genai
-            import os
-            api_key = os.environ.get("GEMINI_API_KEY", "")
-            if api_key:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel("gemini-pro")
-                prompt = f"""Extract from this bill/invoice text the following fields as JSON:
-- vendor: the company/vendor name
-- amount: the total amount (number only)
-- due_date: the due date in YYYY-MM-DD format
-- category: one of [salary, rent, tax, loan_emi, utility, subscription, vendor, other]
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-1.5-pro")
+            
+            prompt = f"""
+You are a financial document parser.
 
-Text: {extracted['raw_text'][:2000]}
+Extract structured data from the invoice text below.
 
-Reply with ONLY valid JSON, no markdown."""
-                response = model.generate_content(prompt)
-                result = json.loads(response.text.strip())
-                extracted.update(result)
-        except Exception:
-            pass  # Fallback to raw text + manual entry
-        
-        # Set default due date if missing
-        if not extracted["due_date"]:
-            default_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
-            extracted["due_date"] = default_date
-    
-    except Exception as e:
-        extracted["error"] = str(e)
+STRICT RULES:
+1. Identify FINAL payable amount:
+   * Prefer labels: "Total", "Total (USD)", "Amount Due"
+   * Ignore: Subtotal, Tax, Discounts
+2. If multiple amounts exist:
+   → ALWAYS select the LARGEST value as final payable amount
+3. Extract:
+   * vendor: JUST the company name. DO NOT include "VENDOR NAME :" or any labels.
+   * amount: numeric only
+   * due_date: YYYY-MM-DD
+   * category: one of [vendor, utility, rent, salary, other]
+4. Dates:
+   * Prefer "Due date"
+   * If not found, return ""
+5. DO NOT GUESS VALUES
+   * If amount not found → return ""
+   * If vendor unclear → return ""
+6. Return ONLY valid JSON:
+{{
+"vendor": "",
+"amount": "",
+"due_date": "",
+"category": ""
+}}
+Invoice text:
+{text[:4000]}
+"""
+            response = model.generate_content(prompt)
+            raw_response = response.text.strip()
+            
+            # Robust JSON extract
+            match = re.search(r'\{.*\}', raw_response, re.DOTALL)
+            parsed_data = json.loads(match.group() if match else raw_response)
+            
+            # Final verification of amount
+            if parsed_data.get("amount"):
+                try:
+                    # Clean the string to ensure it's a valid float
+                    val = str(parsed_data["amount"]).replace(",", "").replace("$", "").replace("₹", "").strip()
+                    parsed_data["amount"] = float(val) if val else ""
+                except:
+                    parsed_data["amount"] = ""
+
+            # ─── PHASE 3: REGEX FALLBACK FOR AMOUNT ───
+            if not parsed_data.get("amount"):
+                matches = re.findall(r'(\d+[\.,]\d{2})', text)
+                if matches:
+                    clean_matches = [float(m.replace(",", "")) for m in matches]
+                    parsed_data["amount"] = max(clean_matches)
+            
+            extracted.update(parsed_data)
+            
+        except Exception as e:
+            print(f"Extraction Pipeline Failure: {e}")
+            extracted["error"] = str(e)
+
+    print(f"========== FINAL RESULT ==========")
+    print(f"Vendor: {extracted.get('vendor')}")
+    print(f"Amount: {extracted.get('amount')}")
+    print(f"Date:   {extracted.get('due_date')}")
+    print("==================================")
     
     return extracted
-
 
 if __name__ == "__main__":
     import uvicorn

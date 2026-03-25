@@ -8,7 +8,7 @@ import styles from './upload.module.css';
 export default function UploadPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [mode, setMode] = useState('manual'); // 'manual' or 'ocr'
+  const [mode, setMode] = useState('ocr');
   const [loading, setLoading] = useState(false);
   const [ocrResult, setOcrResult] = useState(null);
   const [success, setSuccess] = useState('');
@@ -55,10 +55,10 @@ export default function UploadPage() {
       if (data.category) setCategory(data.category);
 
       setOcrResult(data);
-      setMode('manual'); // Switch to manual for review
-      setSuccess('Bill scanned successfully! Please review and save.');
+      setMode('manual');
+      setSuccess('BILL SCANNED SUCCESSFULLY. PLEASE REVIEW.');
     } catch (err) {
-      setError('OCR failed. Please enter details manually.');
+      setError('OCR FAILED. ENTER DETAILS MANUALLY.');
       setMode('manual');
     } finally {
       setLoading(false);
@@ -68,7 +68,7 @@ export default function UploadPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!vendor || !amount) {
-      setError('Vendor and amount are required.');
+      setError('VENDOR AND AMOUNT REQUIRED.');
       return;
     }
 
@@ -91,8 +91,7 @@ export default function UploadPage() {
 
       if (dbError) throw dbError;
 
-      setSuccess('Obligation saved successfully!');
-      // Reset form
+      setSuccess('OBLIGATION SAVED.');
       setVendor(''); setAmount(''); setDueDate('');
       setCategory('vendor'); setPenalty(false);
       setFlexibility(true); setIsCritical(false);
@@ -100,29 +99,29 @@ export default function UploadPage() {
 
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message || 'Failed to save obligation');
+      setError(err.message || 'FAILED TO SAVE OBLIGATION');
     } finally {
       setLoading(false);
     }
   };
 
   const categories = [
-    { value: 'salary', label: '💼 Salary' },
-    { value: 'rent', label: '🏠 Rent' },
-    { value: 'tax', label: '🏛️ Tax' },
-    { value: 'loan_emi', label: '🏦 Loan/EMI' },
-    { value: 'utility', label: '⚡ Utility' },
-    { value: 'subscription', label: '📱 Subscription' },
-    { value: 'vendor', label: '🤝 Vendor' },
-    { value: 'other', label: '📦 Other' },
+    { value: 'salary', label: 'SALARY' },
+    { value: 'rent', label: 'RENT' },
+    { value: 'tax', label: 'TAX' },
+    { value: 'loan_emi', label: 'LOAN/EMI' },
+    { value: 'utility', label: 'UTILITY' },
+    { value: 'subscription', label: 'SUBSCRIPTION' },
+    { value: 'vendor', label: 'VENDOR' },
+    { value: 'other', label: 'OTHER' },
   ];
 
   return (
     <div className={styles.layout}>
       <Sidebar user={user} />
       <main className={styles.main}>
-        <h1 className={styles.pageTitle}>Upload Bills</h1>
-        <p className={styles.pageDesc}>Scan a bill using OCR or enter details manually</p>
+        <h1 className={styles.pageTitle}>Upload</h1>
+        <p className={styles.pageDesc}>Ingest obligations into the engine</p>
 
         {/* Mode Toggle */}
         <div className={styles.modeToggle}>
@@ -131,14 +130,14 @@ export default function UploadPage() {
             onClick={() => setMode('ocr')}
             id="mode-ocr"
           >
-            📷 Scan Bill
+            SCAN BILL
           </button>
           <button
             className={`${styles.modeBtn} ${mode === 'manual' ? styles.modeBtnActive : ''}`}
             onClick={() => setMode('manual')}
             id="mode-manual"
           >
-            ✏️ Manual Entry
+            MANUAL ENTRY
           </button>
         </div>
 
@@ -154,15 +153,14 @@ export default function UploadPage() {
                 id="file-upload"
               />
               <div className={styles.dropzoneContent}>
-                <span className={styles.dropzoneIcon}>📄</span>
-                <p className={styles.dropzoneText}>Drop your bill here or click to upload</p>
-                <p className={styles.dropzoneHint}>Supports: JPG, PNG, PDF</p>
+                <p className={styles.dropzoneText}>SELECT FILE</p>
+                <p className={styles.dropzoneHint}>JPG, PNG, PDF</p>
               </div>
             </div>
             {loading && (
               <div className={styles.processingBanner}>
-                <div className={styles.spinner}></div>
-                Processing with OCR & AI...
+                <div className="spinner"></div>
+                PROCESSING OBLIGATION...
               </div>
             )}
           </div>
@@ -173,25 +171,25 @@ export default function UploadPage() {
           <form onSubmit={handleSubmit} className={styles.form}>
             {ocrResult && (
               <div className={styles.ocrBanner}>
-                ✅ OCR data loaded. Please review and correct if needed.
+                OBLIGATION IDENTIFIED. REVIEW DATA.
               </div>
             )}
 
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
-                <label className="form-label" htmlFor="vendor-input">Vendor Name *</label>
-                <input id="vendor-input" type="text" className="input-field" placeholder="e.g. Amazon, Rent, HDFC" value={vendor} onChange={(e) => setVendor(e.target.value)} required />
+                <label className="section-title" style={{ fontSize: '0.7rem', marginBottom: 8 }} htmlFor="vendor-input">Vendor</label>
+                <input id="vendor-input" type="text" className="input-field" placeholder="VENDOR NAME" value={vendor} onChange={(e) => setVendor(e.target.value)} required />
               </div>
               <div className={styles.formGroup}>
-                <label className="form-label" htmlFor="amount-input">Amount (₹) *</label>
+                <label className="section-title" style={{ fontSize: '0.7rem', marginBottom: 8 }} htmlFor="amount-input">Amount (₹)</label>
                 <input id="amount-input" type="number" className="input-field" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} required min="0" step="0.01" />
               </div>
               <div className={styles.formGroup}>
-                <label className="form-label" htmlFor="due-date-input">Due Date</label>
+                <label className="section-title" style={{ fontSize: '0.7rem', marginBottom: 8 }} htmlFor="due-date-input">Due Date</label>
                 <input id="due-date-input" type="date" className="input-field" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
               </div>
               <div className={styles.formGroup}>
-                <label className="form-label" htmlFor="category-select">Category</label>
+                <label className="section-title" style={{ fontSize: '0.7rem', marginBottom: 8 }} htmlFor="category-select">Category</label>
                 <select id="category-select" className="select-field" value={category} onChange={(e) => setCategory(e.target.value)}>
                   {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
@@ -201,18 +199,15 @@ export default function UploadPage() {
             <div className={styles.toggleRow}>
               <label className={styles.checkboxLabel}>
                 <input type="checkbox" checked={penalty} onChange={(e) => setPenalty(e.target.checked)} />
-                <span className={styles.checkboxCustom}></span>
-                Has late penalty
+                LATE PENALTY APPLICABLE
               </label>
               <label className={styles.checkboxLabel}>
                 <input type="checkbox" checked={!flexibility} onChange={(e) => setFlexibility(!e.target.checked)} />
-                <span className={styles.checkboxCustom}></span>
-                Non-negotiable
+                NON-NEGOTIABLE
               </label>
               <label className={styles.checkboxLabel}>
                 <input type="checkbox" checked={isCritical} onChange={(e) => setIsCritical(e.target.checked)} />
-                <span className={`${styles.checkboxCustom} ${styles.checkboxCritical}`}></span>
-                Critical / Must pay
+                CRITICAL PRIORITY
               </label>
             </div>
 
@@ -220,7 +215,7 @@ export default function UploadPage() {
             {success && <div className={styles.successMsg}>{success}</div>}
 
             <button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%', marginTop: 12 }} id="save-obligation-btn">
-              {loading ? 'Saving...' : 'Save Obligation'}
+              {loading ? 'PROCESSING...' : 'SAVE OBLIGATION'}
             </button>
           </form>
         )}

@@ -39,57 +39,48 @@ export default function EmailsPage() {
       const res = await fetch(`${apiUrl}/api/email-draft`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ obligation: selectedObl, tone, user_name: user?.email?.split('@')[0] || 'Business Owner' }),
+        body: JSON.stringify({ obligation: selectedObl, tone, user_name: user?.email?.split('@')[0]?.toUpperCase() || 'FINANCIAL OFFICER' }),
       });
       if (!res.ok) throw new Error('Draft failed');
       const data = await res.json();
-      setEmailDraft(data.email);
+      setEmailDraft(data.email?.toUpperCase());
     } catch {
       // Local fallback template
       const daysLeft = Math.ceil((new Date(selectedObl.due_date) - new Date()) / 86400000);
-      const userName = user?.email?.split('@')[0] || 'Business Owner';
+      const userName = user?.email?.split('@')[0]?.toUpperCase() || 'FINANCIAL OFFICER';
       const overdue = daysLeft < 0;
 
       const templates = {
-        professional: `Subject: Regarding Payment for Invoice — ${selectedObl.vendor}
+        professional: `SUBJECT: REGARDING PAYMENT FOR INVOICE — ${selectedObl.vendor?.toUpperCase()}
 
-Dear ${selectedObl.vendor} Team,
+DEAR ${selectedObl.vendor?.toUpperCase()} TEAM,
 
-I hope this message finds you well. I am writing to discuss the outstanding payment of ₹${selectedObl.amount?.toLocaleString()} ${overdue ? 'which was due on' : 'scheduled for'} ${selectedObl.due_date}.
+I AM WRITING TO DISCUSS THE OUTSTANDING PAYMENT OF ₹${selectedObl.amount?.toLocaleString()} ${overdue ? 'WHICH WAS DUE ON' : 'SCHEDULED FOR'} ${selectedObl.due_date}.
 
-Due to current cash flow management priorities, I would like to ${overdue ? 'request a brief extension' : 'discuss a possible adjusted timeline'} for this payment. We remain fully committed to fulfilling this obligation and value our ongoing business relationship.
+DUE TO CURRENT CASH FLOW ALLOCATION PRIORITIES, WE REQUIRE A REVISED TIMELINE FOR THIS SETTLEMENT. WE REMAIN COMMITTED TO THE OBLIGATION.
 
-Could we arrange a brief call to discuss a mutually agreeable payment schedule? We anticipate being able to complete this payment within the next 15 business days.
-
-Thank you for your understanding and continued partnership.
-
-Best regards,
+REGARDS,
 ${userName}`,
 
-        empathetic: `Subject: Payment Discussion — ${selectedObl.vendor}
+        empathetic: `SUBJECT: PAYMENT TIMELINE — ${selectedObl.vendor?.toUpperCase()}
 
-Dear ${selectedObl.vendor} Team,
+DEAR ${selectedObl.vendor?.toUpperCase()} TEAM,
 
-I want to be transparent with you about our current situation regarding the payment of ₹${selectedObl.amount?.toLocaleString()} ${overdue ? '(past due)' : `due on ${selectedObl.due_date}`}.
+WE ARE NAVIGATING CASH FLOW ADJUSTMENTS AND REQUIRE ADDITIONAL TIME TO PROCESS THE PAYMENT OF ₹${selectedObl.amount?.toLocaleString()} ${overdue ? '(PAST DUE)' : `DUE ON ${selectedObl.due_date}`}.
 
-We're currently navigating some cash flow challenges, and while we take our commitments to your organization very seriously, we need a bit more time to process this payment. Your business has been incredibly important to us, and we want to maintain that trust.
+WE VALUE THE PARTNERSHIP AND ARE WORKING TOWARDS A RESOLUTION.
 
-I'd love to work together on a comfortable resolution — perhaps a phased payment plan or a brief extension. What would work best for your team?
-
-Warm regards,
+BEST,
 ${userName}`,
 
-        firm: `Subject: Payment Update — ${selectedObl.vendor}
+        firm: `SUBJECT: STATUS UPDATE: INVOICE — ${selectedObl.vendor?.toUpperCase()}
 
-Dear ${selectedObl.vendor},
+DEAR ${selectedObl.vendor?.toUpperCase()},
 
-This is regarding the payment of ₹${selectedObl.amount?.toLocaleString()} ${overdue ? `originally due ${selectedObl.due_date}` : `due on ${selectedObl.due_date}`}.
+REGARDING THE PAYMENT OF ₹${selectedObl.amount?.toLocaleString()} ${overdue ? `ORIGINALLY DUE ${selectedObl.due_date}` : `DUE ON ${selectedObl.due_date}`}.
 
-After reviewing our current financial obligations and cash flow position, we are requesting a ${overdue ? 'revised timeline' : 'brief adjustment'} for this payment. We have prioritized our obligations using a systematic approach and will process your payment as soon as our schedule permits.
+INTERNAL CAPITAL ALLOCATION HAS PRIORITIZED OTHER VECTORS. WE EXPECT TO FINALIZE THIS SETTLEMENT WITHIN 10-15 BUSINESS DAYS.
 
-We expect to complete this within 10-15 business days. Please confirm receipt of this communication.
-
-Regards,
 ${userName}`,
       };
 
@@ -109,15 +100,15 @@ ${userName}`,
     <div className={styles.layout}>
       <Sidebar user={user} />
       <main className={styles.main}>
-        <h1 className={styles.pageTitle}>Email Drafter</h1>
-        <p className={styles.pageDesc}>Auto-generate negotiation emails for delayed payments</p>
+        <h1 className={styles.pageTitle}>Correspondence</h1>
+        <p className={styles.pageDesc}>Automated negotiation drafting for capital preservation</p>
 
         <div className={styles.twoCol}>
           {/* Left: Select obligation */}
           <div className={styles.panel}>
-            <h2 className={styles.panelTitle}>Select Obligation</h2>
+            <h2 className={styles.panelTitle}>SELECT OBLIGATION</h2>
             {obligations.length === 0 ? (
-              <p className={styles.muted}>No unpaid obligations found.</p>
+              <p className={styles.muted}>NO UNPAID ENTRIES IDENTIFIED</p>
             ) : (
               <div className={styles.oblList}>
                 {obligations.map((obl, i) => (
@@ -126,7 +117,7 @@ ${userName}`,
                     className={`${styles.oblItem} ${selectedObl?.id === obl.id ? styles.oblItemActive : ''}`}
                     onClick={() => { setSelectedObl(obl); setEmailDraft(''); }}
                   >
-                    <div className={styles.oblVendor}>{obl.vendor}</div>
+                    <div className={styles.oblVendor}>{obl.vendor?.toUpperCase()}</div>
                     <div className={styles.oblMeta}>₹{obl.amount?.toLocaleString()} · {obl.due_date}</div>
                   </button>
                 ))}
@@ -135,9 +126,9 @@ ${userName}`,
 
             {selectedObl && (
               <div className={styles.toneSection}>
-                <label className="form-label">Email Tone</label>
+                <label className="section-title" style={{ fontSize: '0.7rem', marginBottom: 16 }}>COMMUNICATION VECTOR</label>
                 <div className={styles.toneRow}>
-                  {[{ value: 'professional', label: '💼 Professional' }, { value: 'empathetic', label: '💙 Empathetic' }, { value: 'firm', label: '⚡ Firm' }].map(t => (
+                  {[{ value: 'professional', label: 'PROFESSIONAL' }, { value: 'empathetic', label: 'EMPATHETIC' }, { value: 'firm', label: 'FIRM' }].map(t => (
                     <button
                       key={t.value}
                       className={`${styles.toneBtn} ${tone === t.value ? styles.toneBtnActive : ''}`}
@@ -148,7 +139,7 @@ ${userName}`,
                   ))}
                 </div>
                 <button onClick={generateEmail} className="btn-primary" style={{ width: '100%', marginTop: 16 }} disabled={loading} id="generate-email-btn">
-                  {loading ? 'Generating...' : '✉️ Generate Email'}
+                  {loading ? 'DRAFTING...' : 'GENERATE DRAFT'}
                 </button>
               </div>
             )}
@@ -157,10 +148,10 @@ ${userName}`,
           {/* Right: Email preview */}
           <div className={styles.panel}>
             <div className={styles.panelHeader}>
-              <h2 className={styles.panelTitle}>Email Preview</h2>
+              <h2 className={styles.panelTitle}>DRAFT PREVIEW</h2>
               {emailDraft && (
-                <button onClick={copyToClipboard} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
-                  {copied ? '✅ Copied!' : '📋 Copy'}
+                <button onClick={copyToClipboard} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.7rem' }}>
+                  {copied ? 'COPIED' : 'COPY'}
                 </button>
               )}
             </div>
@@ -170,8 +161,7 @@ ${userName}`,
               </div>
             ) : (
               <div className={styles.emptyEmail}>
-                <span>✉️</span>
-                <p>Select an obligation and generate an email to preview it here</p>
+                SELECT OBLIGATION TO GENERATE
               </div>
             )}
           </div>

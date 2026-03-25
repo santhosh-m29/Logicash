@@ -9,7 +9,7 @@ export default function ObligationsPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [obligations, setObligations] = useState([]);
-  const [filter, setFilter] = useState('all'); // all, unpaid, paid, critical
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     const init = async () => {
@@ -54,28 +54,28 @@ export default function ObligationsPage() {
     <div className={styles.layout}>
       <Sidebar user={user} />
       <main className={styles.main}>
-        <div className={styles.header}>
+        <header className={styles.header}>
           <div>
             <h1 className={styles.pageTitle}>Obligations</h1>
-            <p className={styles.pageDesc}>Manage all your financial obligations</p>
+            <p className={styles.pageDesc}>Registry of all pending and completed commitments</p>
           </div>
           <button onClick={() => router.push('/upload')} className="btn-primary" id="add-obligation-btn">
-            + Add New
+            REGISTER NEW
           </button>
-        </div>
+        </header>
 
         {/* Summary */}
         <div className={styles.summaryRow}>
           <div className={styles.summaryCard}>
-            <span className={styles.summaryLabel}>Total Unpaid</span>
-            <span className={styles.summaryValue} style={{ color: '#fbbf24' }}>₹{totalUnpaid.toLocaleString()}</span>
+            <span className={styles.summaryLabel}>UNPAID TOTAL</span>
+            <span className={styles.summaryValue} style={{ color: '#f43f5e' }}>₹{totalUnpaid.toLocaleString()}</span>
           </div>
           <div className={styles.summaryCard}>
-            <span className={styles.summaryLabel}>Total Paid</span>
+            <span className={styles.summaryLabel}>PAID TOTAL</span>
             <span className={styles.summaryValue} style={{ color: '#34d399' }}>₹{totalPaid.toLocaleString()}</span>
           </div>
           <div className={styles.summaryCard}>
-            <span className={styles.summaryLabel}>Total Items</span>
+            <span className={styles.summaryLabel}>TOTAL REGRIES</span>
             <span className={styles.summaryValue}>{obligations.length}</span>
           </div>
         </div>
@@ -83,8 +83,8 @@ export default function ObligationsPage() {
         {/* Filter */}
         <div className={styles.filterRow}>
           {['all', 'unpaid', 'paid', 'critical'].map(f => (
-            <button key={f} className={`${styles.filterBtn} ${filter === f ? styles.filterActive : ''}`} onClick={() => setFilter(f)}>
-              {f === 'all' ? 'All' : f === 'unpaid' ? 'Unpaid' : f === 'paid' ? 'Paid' : 'Critical'}
+            <button key={f} className={`${styles.filterBtn} ${filter === f ? styles.filterBtnActive : ''}`} onClick={() => setFilter(f)}>
+              {f.toUpperCase()}
             </button>
           ))}
         </div>
@@ -92,17 +92,17 @@ export default function ObligationsPage() {
         {/* Table */}
         <div className={styles.tableWrapper}>
           {filtered.length === 0 ? (
-            <div className={styles.emptyState}>No obligations found. Upload a bill to get started!</div>
+            <div className={styles.emptyState}>NO ENTRIES FOUND</div>
           ) : (
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Vendor</th>
-                  <th>Amount</th>
-                  <th>Due Date</th>
-                  <th>Category</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>VENDOR</th>
+                  <th>AMOUNT</th>
+                  <th>DUE DATE</th>
+                  <th>CATEGORY</th>
+                  <th>STATUS</th>
+                  <th>OPERATIONS</th>
                 </tr>
               </thead>
               <tbody>
@@ -112,9 +112,8 @@ export default function ObligationsPage() {
                     <tr key={obl.id || i} className={obl.is_paid ? styles.paidRow : ''}>
                       <td>
                         <div className={styles.vendorCell}>
-                          {obl.vendor || 'Unknown'}
-                          {obl.is_critical && <span className="badge badge-rose">CRITICAL</span>}
-                          {obl.penalty === 1 && <span className="badge badge-amber">PENALTY</span>}
+                          {obl.vendor?.toUpperCase() || 'UNKNOWN'}
+                          {obl.is_critical && <span className="badge" style={{ borderColor: '#f43f5e', color: '#f43f5e' }}>PRIORITY</span>}
                         </div>
                       </td>
                       <td className={styles.amountCell}>₹{(obl.amount || 0).toLocaleString()}</td>
@@ -122,21 +121,17 @@ export default function ObligationsPage() {
                         <span className={`${daysLeft <= 3 && !obl.is_paid ? styles.dueDanger : ''}`}>
                           {obl.due_date}
                         </span>
-                        {!obl.is_paid && <div className={styles.daysHint}>{daysLeft < 0 ? 'Overdue' : `${daysLeft}d left`}</div>}
+                        {!obl.is_paid && <div className={styles.daysHint}>{daysLeft < 0 ? 'OVERDUE' : `${daysLeft}D REMAINING`}</div>}
                       </td>
-                      <td><span className={styles.categoryTag}>{obl.category || 'other'}</span></td>
-                      <td>
-                        <span className={`badge ${obl.is_paid ? 'badge-green' : 'badge-amber'}`}>
-                          {obl.is_paid ? 'Paid' : 'Unpaid'}
-                        </span>
-                      </td>
+                      <td>{obl.category?.toUpperCase() || 'OTHER'}</td>
+                      <td>{obl.is_paid ? 'PAID' : 'UNPAID'}</td>
                       <td>
                         <div className={styles.actions}>
-                          <button onClick={() => togglePaid(obl.id, obl.is_paid)} className={styles.actionBtn} title={obl.is_paid ? 'Mark Unpaid' : 'Mark Paid'}>
-                            {obl.is_paid ? '↩️' : '✅'}
+                          <button onClick={() => togglePaid(obl.id, obl.is_paid)} className={styles.actionBtn}>
+                            {obl.is_paid ? 'UNDO' : 'SET PAID'}
                           </button>
-                          <button onClick={() => deleteObl(obl.id)} className={`${styles.actionBtn} ${styles.deleteBtn}`} title="Delete">
-                            🗑️
+                          <button onClick={() => deleteObl(obl.id)} className={`${styles.actionBtn} ${styles.deleteBtn}`}>
+                            DELETE
                           </button>
                         </div>
                       </td>

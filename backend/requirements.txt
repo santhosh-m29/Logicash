@@ -6,3 +6,5 @@ Pillow
 pytesseract
 PyMuPDF
 google-generativeai
+opencv-python
+numpy
