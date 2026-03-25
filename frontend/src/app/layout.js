@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { BalanceProvider } from "@/context/BalanceContext";
 
 export const metadata = {
   title: "Logicash — Full Stack CFO",
@@ -33,7 +34,9 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <ThemeProvider>
-          {children}
+          <BalanceProvider>
+            {children}
+          </BalanceProvider>
         </ThemeProvider>
       </body>
     </html>

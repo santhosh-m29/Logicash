@@ -3,14 +3,17 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
+import { useBalance } from '@/context/BalanceContext';
+import { generateLocalScenarios } from '@/lib/decisions';
 import styles from './scenarios.module.css';
 
 export default function ScenariosPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [balance, setBalance] = useState('');
+  const { balance } = useBalance();
   const [scenarios, setScenarios] = useState(null);
   const [selectedScenario, setSelectedScenario] = useState(null);
+  const [recommendedId, setRecommendedId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [obligations, setObligations] = useState([]);
   const [explanation, setExplanation] = useState('');
@@ -31,78 +34,21 @@ export default function ScenariosPage() {
     init();
   }, [router]);
 
-  const runScenarios = async () => {
-    if (!balance || obligations.length === 0) return;
+  useEffect(() => {
+    if (obligations.length === 0) return;
     setLoading(true);
+    const floatBal = parseFloat(balance) || 0;
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${apiUrl}/api/scenarios`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ obligations, balance: parseFloat(balance) }),
-      });
-      if (!res.ok) throw new Error('Engine failed');
-      const data = await res.json();
-      setScenarios(data.scenarios);
-      setSelectedScenario(data.recommended);
-      setExplanation(data.explanation || '');
-    } catch {
-      const localScenarios = generateLocalScenarios(obligations, parseFloat(balance));
+      // Using deterministic offline decision engine
+      const { scenarios: localScenarios, recommended_id } = generateLocalScenarios(obligations, floatBal);
       setScenarios(localScenarios);
-      setSelectedScenario('penalty_minimization');
+      setRecommendedId(recommended_id);
+      if (!selectedScenario) setSelectedScenario(recommended_id);
     } finally {
       setLoading(false);
     }
-  };
+  }, [balance, obligations, selectedScenario]);
 
-  const generateLocalScenarios = (obls, bal) => {
-    const today = new Date();
-    const scored = (weightConfig) => {
-      return obls.map(o => {
-        const daysLeft = Math.max(1, Math.ceil((new Date(o.due_date) - today) / 86400000));
-        const urgency = 1 / daysLeft;
-        const penaltyScore = o.penalty ? weightConfig.penalty : 0;
-        const flexScore = o.flexibility ? 0 : weightConfig.flexibility;
-        const catScore = ['salary', 'tax', 'rent', 'loan_emi'].includes(o.category) ? weightConfig.category_high : (['vendor'].includes(o.category) ? weightConfig.category_med : 0);
-        const smallBonus = o.amount < bal * 0.1 ? weightConfig.small_bonus : 0;
-        const criticalOverride = o.is_critical ? 999 : 0;
-
-        const score = criticalOverride + penaltyScore + (urgency * weightConfig.urgency_mult) + flexScore + catScore + smallBonus;
-        return { ...o, score, daysLeft };
-      }).sort((a, b) => b.score - a.score);
-    };
-
-    const penaltyMin = scored({ penalty: 5, urgency_mult: 3, flexibility: 2, category_high: 3, category_med: 1, small_bonus: 1 });
-    const relationship = scored({ penalty: 2, urgency_mult: 2, flexibility: 3, category_high: 2, category_med: 4, small_bonus: 2 });
-    const runway = scored({ penalty: 1, urgency_mult: 1, flexibility: 1, category_high: 4, category_med: 1, small_bonus: 4 });
-
-    const buildPlan = (sorted) => {
-      let remaining = bal;
-      return sorted.map(o => {
-        const canPay = remaining >= o.amount;
-        if (canPay) remaining -= o.amount;
-        return { ...o, action: canPay ? 'PAY' : 'DEFER', remaining_after: canPay ? remaining : remaining };
-      });
-    };
-
-    return {
-      penalty_minimization: {
-        name: 'PENALTY MINIMIZATION',
-        description: 'PRIORITIZES OBLIGATIONS WITH LATE PENALTIES TO MINIMIZE UNNECESSARY EXPENDITURE.',
-        plan: buildPlan(penaltyMin),
-      },
-      relationship_preservation: {
-        name: 'RELATIONSHIP PRESERVATION',
-        description: 'PROTECTS STRATEGIC VENDOR RELATIONSHIPS BY PRIORITIZING KEY PARTNER PAYMENTS.',
-        plan: buildPlan(relationship),
-      },
-      runway_maximization: {
-        name: 'RUNWAY MAXIMIZATION',
-        description: 'EXTENDS OPERATIONAL RUNWAY BY DEFERRING NON-CRITICAL CASH OUTFLOWS.',
-        plan: buildPlan(runway),
-      },
-    };
-  };
 
   const scenarioMeta = [
     { key: 'penalty_minimization', name: 'PENALTY MINIMIZATION' },
@@ -117,74 +63,35 @@ export default function ScenariosPage() {
       <Sidebar user={user} />
       <main className={styles.main}>
         <h1 className={styles.pageTitle}>Strategy Engine</h1>
-        <p className={styles.pageDesc}>Model payment vectors and optimize capital allocation</p>
+        <p className={styles.pageDesc}>Automated payment vector optimization based on current availability.</p>
 
-        <div className={styles.inputRow}>
-          <div className={styles.formGroup}>
-            <label className="section-title" style={{ fontSize: '0.7rem', marginBottom: 8 }} htmlFor="scenario-balance">AVAILABLE BALANCE (₹)</label>
-            <input
-              id="scenario-balance"
-              type="number"
-              className="input-field"
-              placeholder="0.00"
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
-            />
-          </div>
-          <button onClick={runScenarios} className="btn-primary" disabled={loading || !balance || obligations.length === 0} id="run-scenarios-btn">
-            {loading ? 'CALCULATING...' : 'EXECUTE ANALYSIS'}
-          </button>
-        </div>
-
-        {obligations.length === 0 && (
+        {obligations.length === 0 ? (
           <div className={styles.emptyState}>
             NO UNPAID OBLIGATIONS IDENTIFIED
           </div>
-        )}
-
-        {/* Scenario Cards */}
-        {scenarios && (
+        ) : loading ? (
+          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>CALCULATING STRATEGIES...</div>
+        ) : (
           <>
-            <div className={styles.scenarioCards}>
-              {scenarioMeta.map(sm => {
-                const s = scenarios[sm.key];
-                if (!s) return null;
-                const payCount = s.plan.filter(p => p.action === 'PAY').length;
-                const payTotal = s.plan.filter(p => p.action === 'PAY').reduce((sum, p) => sum + p.amount, 0);
-                return (
-                  <button
-                    key={sm.key}
-                    className={`${styles.scenarioCard} ${selectedScenario === sm.key ? styles.scenarioCardActive : ''}`}
-                    onClick={() => setSelectedScenario(sm.key)}
-                    id={`scenario-${sm.key}`}
-                  >
-                    <h3>{sm.name}</h3>
-                    <p className={styles.scenarioDesc}>{s.description}</p>
-                    <div className={styles.scenarioStats}>
-                      <div><strong>{payCount}</strong> SETTLEMENTS</div>
-                      <div><strong>₹{payTotal.toLocaleString()}</strong> OUTFLOW</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
             {/* Payment Plan */}
             {selected && (
-              <div className={styles.planPanel}>
-                <h2 className={styles.planTitle}>
-                  {selected.name} — ALLOCATION PLAN
+              <div className={styles.planPanel} style={{ marginBottom: 60 }}>
+                <h2 className={styles.planTitle} style={{ borderBottom: '2px solid var(--text-primary)', paddingBottom: 16, marginBottom: 24 }}>
+                  {selectedScenario === recommendedId ? 'RECOMMENDED PLAN' : 'SELECTED SCENARIO'}: {selected.name}
                 </h2>
+                <p className={styles.scenarioDesc} style={{ marginBottom: 24, padding: '16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }}>
+                  {selected.description}
+                </p>
                 <div className={styles.planList}>
                   {selected.plan.map((item, i) => (
                     <div key={item.id || i} className={`${styles.planItem} ${item.action === 'DEFER' ? styles.planDeferred : ''}`}>
                       <div className={styles.planOrder}>{String(i + 1).padStart(2, '0')}</div>
                       <div className={styles.planInfo}>
                         <div className={styles.planVendor}>
-                          {item.vendor?.toUpperCase()}
+                          {item.vendor_display}
                           {item.is_critical && <span className="badge" style={{ marginLeft: 12, borderColor: '#f43f5e', color: '#f43f5e' }}>PRIORITY</span>}
                         </div>
-                        <div className={styles.planCategory}>{item.category?.toUpperCase()} · T-{item.daysLeft}D</div>
+                        <div className={styles.planCategory}>{item.category_display} · T-{item.daysLeft}D</div>
                       </div>
                       <div className={styles.planAmount}>₹{item.amount.toLocaleString()}</div>
                       <div className={`${styles.planAction} ${item.action === 'PAY' ? styles.planPay : styles.planDefer}`}>
@@ -196,6 +103,36 @@ export default function ScenariosPage() {
               </div>
             )}
 
+            {/* Alternate Scenarios */}
+            {scenarios && (
+              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 40 }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 800, letterSpacing: '0.1em', marginBottom: 24 }}>ALTERNATE SCENARIOS</h3>
+                <div className={styles.scenarioCards}>
+                  {scenarioMeta.map(sm => {
+                    const s = scenarios[sm.key];
+                    if (!s) return null;
+                    const payCount = s.plan.filter(p => p.action === 'PAY').length;
+                    const payTotal = s.plan.filter(p => p.action === 'PAY').reduce((sum, p) => sum + p.amount, 0);
+                    return (
+                      <button
+                        key={sm.key}
+                        className={`${styles.scenarioCard} ${selectedScenario === sm.key ? styles.scenarioCardActive : ''}`}
+                        onClick={() => setSelectedScenario(sm.key)}
+                        id={`scenario-${sm.key}`}
+                      >
+                        <h3>{sm.name}</h3>
+                        <p className={styles.scenarioDesc}>{s.description}</p>
+                        <div className={styles.scenarioStats}>
+                          <div><strong>{payCount}</strong> SETTLEMENTS</div>
+                          <div><strong>₹{payTotal.toLocaleString()}</strong> OUTFLOW</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
             {/* Explanation */}
             {explanation && (
               <div className={styles.explanationPanel}>

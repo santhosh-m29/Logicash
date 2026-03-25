@@ -89,7 +89,13 @@ export default function UploadPage() {
         is_critical: isCritical,
       });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        // Postgres foreign key violation code is 23503
+        if (dbError.code === '23503' || dbError.message.includes('obligations_user_id_fkey')) {
+          throw new Error('SESSION INVALID. PLEASE LOG OUT AND LOG IN AGAIN.');
+        }
+        throw dbError;
+      }
 
       setSuccess('OBLIGATION SAVED.');
       setVendor(''); setAmount(''); setDueDate('');
