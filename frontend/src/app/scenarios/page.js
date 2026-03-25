@@ -9,6 +9,17 @@ export default function ScenariosPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [balance, setBalance] = useState('');
+
+  useEffect(() => {
+    const savedBalance = localStorage.getItem('logicash_balance');
+    if (savedBalance) setBalance(savedBalance);
+  }, []);
+
+  const handleBalanceChange = (e) => {
+    const val = e.target.value;
+    setBalance(val);
+    localStorage.setItem('logicash_balance', val);
+  };
   const [scenarios, setScenarios] = useState(null);
   const [selectedScenario, setSelectedScenario] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -128,7 +139,7 @@ export default function ScenariosPage() {
               className="input-field"
               placeholder="0.00"
               value={balance}
-              onChange={(e) => setBalance(e.target.value)}
+              onChange={handleBalanceChange}
             />
           </div>
           <button onClick={runScenarios} className="btn-primary" disabled={loading || !balance || obligations.length === 0} id="run-scenarios-btn">

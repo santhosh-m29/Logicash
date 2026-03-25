@@ -1,7 +1,6 @@
-/** @type {import('next').NextConfig} */
-import withPWA from 'next-pwa';
+import withPWAInit from '@ducanh2912/next-pwa';
 
-const generatePWA = withPWA({
+const withPWA = withPWAInit({
   dest: 'public',
   register: true,
   skipWaiting: true,
@@ -12,4 +11,4 @@ const nextConfig = {
   /* config options here */
 };
 
-export default generatePWA(nextConfig);
+export default withPWA(nextConfig);

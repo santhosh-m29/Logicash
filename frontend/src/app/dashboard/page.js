@@ -10,6 +10,17 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [obligations, setObligations] = useState([]);
   const [balance, setBalance] = useState('');
+
+  useEffect(() => {
+    const savedBalance = localStorage.getItem('logicash_balance');
+    if (savedBalance) setBalance(savedBalance);
+  }, []);
+
+  const handleBalanceChange = (e) => {
+    const val = e.target.value;
+    setBalance(val);
+    localStorage.setItem('logicash_balance', val);
+  };
   const [loading, setLoading] = useState(true);
   const [runway, setRunway] = useState(null);
   const [conflict, setConflict] = useState(false);
@@ -88,7 +99,7 @@ export default function DashboardPage() {
               className="input-field"
               placeholder="0.00"
               value={balance}
-              onChange={(e) => setBalance(e.target.value)}
+              onChange={handleBalanceChange}
               style={{ width: '200px', fontSize: '1.2rem', fontWeight: '900', border: 'none', borderBottom: '2px solid #222', textAlign: 'right', padding: '8px 0' }}
             />
           </div>
