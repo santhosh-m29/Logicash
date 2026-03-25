@@ -3,16 +3,19 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
+import { useBalance } from '@/context/BalanceContext';
+import { generateLocalScenarios } from '@/lib/decisions';
 import styles from './dashboard.module.css';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [obligations, setObligations] = useState([]);
-  const [balance, setBalance] = useState('');
+  const { balance, updateBalance } = useBalance();
   const [loading, setLoading] = useState(true);
   const [runway, setRunway] = useState(null);
   const [conflict, setConflict] = useState(false);
+  const [recommendedPlan, setRecommendedPlan] = useState(null);
 
   useEffect(() => {
     const init = async () => {
@@ -68,7 +71,13 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (balance && obligations.length > 0) calcRunway();
+    if (balance && obligations.length > 0) {
+      calcRunway();
+      const { scenarios, recommended_id } = generateLocalScenarios(obligations, parseFloat(balance) || 0);
+      setRecommendedPlan(scenarios[recommended_id]);
+    } else {
+      setRecommendedPlan(null);
+    }
   }, [balance, obligations]);
 
   const totalUnpaid = obligations.reduce((sum, o) => sum + (o.amount || 0), 0);
@@ -104,7 +113,11 @@ export default function DashboardPage() {
               className="input-field"
               placeholder="0.00"
               value={balance}
+<<<<<<< HEAD
               onChange={handleBalanceChange}
+=======
+              onChange={(e) => updateBalance(e.target.value)}
+>>>>>>> 0f677ddfb303a629d387e234e1a996ea6529fdc0
               style={{ width: '200px', fontSize: '1.2rem', fontWeight: '900', border: 'none', borderBottom: '2px solid #222', textAlign: 'right', padding: '8px 0' }}
             />
           </div>
@@ -117,9 +130,6 @@ export default function DashboardPage() {
               <strong>CASH FLOW CONFLICT</strong>
               <p>Obligations (₹{totalUnpaid.toLocaleString()}) exceed balance.</p>
             </div>
-            <button onClick={() => router.push('/scenarios')} className="btn-primary">
-              STRATEGIZE
-            </button>
           </div>
         )}
 
@@ -151,7 +161,7 @@ export default function DashboardPage() {
               <p className={styles.subtitle}>No pending obligations found.</p>
             ) : (
               <div className={styles.obligationList}>
-                {obligations.slice(0, 10).map((obl, i) => {
+                {obligations.slice(0, 5).map((obl, i) => {
                   const daysLeft = Math.ceil((new Date(obl.due_date) - new Date()) / 86400000);
                   return (
                     <div key={obl.id || i} className={styles.oblRow}>
@@ -175,25 +185,50 @@ export default function DashboardPage() {
           </div>
 
           <div>
-            <h2 className={styles.panelTitle}>Operations</h2>
+            <h2 className={styles.panelTitle}>Operations & Strategy</h2>
             <div className={styles.actionGrid}>
               <button onClick={() => router.push('/upload')} className={styles.actionCard}>
                 <span className={styles.actionLabel}>Upload</span>
                 <span className={styles.actionDesc}>Scan or add bills</span>
               </button>
-              <button onClick={() => router.push('/obligations')} className={styles.actionCard}>
-                <span className={styles.actionLabel}>Manage</span>
-                <span className={styles.actionDesc}>View all entries</span>
-              </button>
               <button onClick={() => router.push('/scenarios')} className={styles.actionCard}>
-                <span className={styles.actionLabel}>Simulate</span>
-                <span className={styles.actionDesc}>Payment strategies</span>
-              </button>
-              <button onClick={() => router.push('/emails')} className={styles.actionCard}>
-                <span className={styles.actionLabel}>Communicate</span>
-                <span className={styles.actionDesc}>Vendor negotiation</span>
+                <span className={styles.actionLabel}>Strategize</span>
+                <span className={styles.actionDesc}>View full plan</span>
               </button>
             </div>
+            
+            {/* Recommended Plan Preview */}
+            {recommendedPlan && recommendedPlan.plan && (
+              <div className={styles.recommendedPlanCard} style={{ marginTop: '20px', padding: '24px', border: '1px solid #222', background: 'var(--bg-secondary)' }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: '800', letterSpacing: '0.1em', marginBottom: '16px' }}>RECOMMENDED ACTION</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {recommendedPlan.plan.slice(0, 3).map((item, idx) => (
+                    <div key={item.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
+                       <div>
+                         <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{item.vendor_display}</div>
+                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>₹{item.amount.toLocaleString()}</div>
+                       </div>
+                       <div style={{ 
+                         fontSize: '0.7rem', 
+                         fontWeight: '800', 
+                         padding: '4px 8px', 
+                         background: item.action === 'PAY' ? 'var(--text-primary)' : 'transparent', 
+                         color: item.action === 'PAY' ? 'var(--bg-primary)' : 'var(--text-muted)',
+                         border: item.action === 'DEFER' ? '1px solid var(--border-subtle)' : 'none'
+                       }}>
+                         {item.action}
+                       </div>
+                    </div>
+                  ))}
+                </div>
+                {recommendedPlan.plan.length > 3 && (
+                   <button onClick={() => router.push('/scenarios')} style={{ width: '100%', marginTop: '16px', padding: '12px', background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontWeight: '800', fontSize: '0.75rem', cursor: 'pointer' }}>
+                     VIEW FULL STRATEGY ({recommendedPlan.plan.length} ITEMS)
+                   </button>
+                )}
+              </div>
+            )}
+            
           </div>
         </div>
       </main>
