@@ -9,17 +9,6 @@ export default function ScenariosPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [balance, setBalance] = useState('');
-
-  useEffect(() => {
-    const savedBalance = localStorage.getItem('logicash_balance');
-    if (savedBalance) setBalance(savedBalance);
-  }, []);
-
-  const handleBalanceChange = (e) => {
-    const val = e.target.value;
-    setBalance(val);
-    localStorage.setItem('logicash_balance', val);
-  };
   const [scenarios, setScenarios] = useState(null);
   const [selectedScenario, setSelectedScenario] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -31,6 +20,11 @@ export default function ScenariosPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
       setUser(session.user);
+      
+      if (session.user.user_metadata?.balance) {
+        setBalance(session.user.user_metadata.balance);
+      }
+
       const { data } = await supabase
         .from('obligations')
         .select('*')
@@ -41,6 +35,14 @@ export default function ScenariosPage() {
     };
     init();
   }, [router]);
+
+  const handleBalanceChange = async (e) => {
+    const val = e.target.value;
+    setBalance(val);
+    await supabase.auth.updateUser({
+      data: { balance: val }
+    });
+  };
 
   const runScenarios = async () => {
     if (!balance || obligations.length === 0) return;

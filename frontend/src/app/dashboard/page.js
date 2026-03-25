@@ -10,17 +10,6 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [obligations, setObligations] = useState([]);
   const [balance, setBalance] = useState('');
-
-  useEffect(() => {
-    const savedBalance = localStorage.getItem('logicash_balance');
-    if (savedBalance) setBalance(savedBalance);
-  }, []);
-
-  const handleBalanceChange = (e) => {
-    const val = e.target.value;
-    setBalance(val);
-    localStorage.setItem('logicash_balance', val);
-  };
   const [loading, setLoading] = useState(true);
   const [runway, setRunway] = useState(null);
   const [conflict, setConflict] = useState(false);
@@ -30,11 +19,27 @@ export default function DashboardPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
       setUser(session.user);
+      
+      // Load balance from Supabase user_metadata
+      if (session.user.user_metadata?.balance) {
+        setBalance(session.user.user_metadata.balance);
+      }
+
       await fetchObligations(session.user.id);
       setLoading(false);
     };
     init();
   }, [router]);
+
+  const handleBalanceChange = async (e) => {
+    const val = e.target.value;
+    setBalance(val);
+    
+    // Save balance to Supabase
+    await supabase.auth.updateUser({
+      data: { balance: val }
+    });
+  };
 
   const fetchObligations = async (userId) => {
     const { data, error } = await supabase
