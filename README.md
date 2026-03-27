@@ -1,3 +1,6 @@
+Deployed Site:
+   **https://logicash.vercel.app/**
+
 TO RUN:
 Install npm 
 from your root directory move to "backend" directory
